@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "657462833760",
+    "project_id": "nyrowallet",
+    "storage_bucket": "nyrowallet.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:657462833760:android:69729a8a1a1bfe2aa4c905",
+        "android_client_info": {
+          "package_name": "com.nyro.nyrowallet"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD8-iYuFvyzv396ePHAdq3jLOhIKhm0ddM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
