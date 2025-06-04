@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  static const String routeName = '/home';
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -28,11 +31,28 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         centerTitle: true,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.credit_card),
+            onPressed: () {
+              Navigator.of(context).pushNamed('/cards');
+            },
+          ),
+        ],
       ),
       body: Center(
-        child: Text(
-          'Home Content Placeholder',
-          style: TextStyle(color: Colors.white70, fontSize: 18),
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.amber,
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+          ),
+          onPressed: () {
+            Navigator.pushNamed(context, ProfileScreen.routeName);
+          },
+          child: const Text(
+            'Profile',
+            style: TextStyle(color: Colors.black, fontSize: 18),
+          ),
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -53,6 +73,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.pushNamed(context, '/add_card');
+        },
+        backgroundColor: const Color(0xFFE5C100),
+        child: const Icon(Icons.add, color: Colors.black),
       ),
     );
   }
