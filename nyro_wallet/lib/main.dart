@@ -23,7 +23,7 @@ void main() async {
 }
 
 class AuthGate extends StatelessWidget {
-  const AuthGate({Key? key}) : super(key: key);
+  const AuthGate({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +48,7 @@ class AuthGate extends StatelessWidget {
 }
 
 class NyroWalletApp extends StatelessWidget {
-  const NyroWalletApp({Key? key}) : super(key: key);
+  const NyroWalletApp({super.key});
 
   @override
   Widget build(BuildContext context) {

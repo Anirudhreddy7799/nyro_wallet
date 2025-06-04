@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
-import 'login_screen.dart'; // Import the LoginScreen
+// Import the LoginScreen
 
 class IntroScreen extends StatefulWidget {
   const IntroScreen({super.key});

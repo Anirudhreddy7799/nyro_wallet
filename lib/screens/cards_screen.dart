@@ -6,7 +6,7 @@ import '../models/card_model.dart';
 class CardsScreen extends StatelessWidget {
   static const routeName = '/cards';
 
-  const CardsScreen({Key? key}) : super(key: key);
+  const CardsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +28,7 @@ class CardsScreen extends StatelessWidget {
 }
 
 class _CardsList extends StatelessWidget {
-  const _CardsList({Key? key}) : super(key: key);
+  const _CardsList({super.key});
 
   @override
   Widget build(BuildContext context) {
