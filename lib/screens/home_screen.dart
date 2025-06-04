@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'profile_screen.dart';
+import 'cards_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -75,11 +76,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.amber,
+        child: const Icon(Icons.credit_card, color: Colors.black),
         onPressed: () {
-          Navigator.pushNamed(context, '/add_card');
+          Navigator.pushNamed(context, CardsScreen.routeName);
         },
-        backgroundColor: const Color(0xFFE5C100),
-        child: const Icon(Icons.add, color: Colors.black),
       ),
     );
   }
