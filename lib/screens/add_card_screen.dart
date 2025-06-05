@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:credit_card_type_detector/credit_card_type_detector.dart';
+
+import '../utils/card_utils.dart';
 
 class AddCardScreen extends StatefulWidget {
   static const routeName = '/add-card';
@@ -22,6 +25,7 @@ class _AddCardScreenState extends State<AddCardScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   String? _errorMsg;
+  CreditCardType? _detectedCardType;
 
   @override
   void dispose() {
@@ -35,46 +39,38 @@ class _AddCardScreenState extends State<AddCardScreen> {
 
   String? _validateExpiry(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Enter expiry date';
+      return 'Please enter expiry date';
     }
-    final input = value.trim();
-    int month;
-    int yearFull;
-
-    if (RegExp(r'^\d{4}').hasMatch(input)) {
-      month = int.parse(input.substring(0, 2));
-      final yy = int.parse(input.substring(2, 4));
-      yearFull = 2000 + yy;
-    } else if (RegExp(r'^\d{2}/\d{2}$').hasMatch(input)) {
-      month = int.parse(input.substring(0, 2));
-      final yy = int.parse(input.substring(3, 5));
-      yearFull = 2000 + yy;
-    } else if (RegExp(r'^\d{2}/\d{4}$').hasMatch(input)) {
-      month = int.parse(input.substring(0, 2));
-      yearFull = int.parse(input.substring(3, 7));
+    final digitsOnly = value.replaceAll(RegExp(r'[^0-9]'), '');
+    int month, year;
+    if (digitsOnly.length == 4) {
+      month = int.tryParse(digitsOnly.substring(0, 2)) ?? 0;
+      year = int.tryParse(digitsOnly.substring(2, 4)) ?? 0;
+      year += 2000;
+    } else if (digitsOnly.length == 6) {
+      month = int.tryParse(digitsOnly.substring(0, 2)) ?? 0;
+      year = int.tryParse(digitsOnly.substring(2, 6)) ?? 0;
     } else {
-      return 'Invalid format. Use MMYY, MM/YY or MM/YYYY';
+      return 'Enter a valid expiry date (MM/YY or MM/YYYY)';
     }
-
     if (month < 1 || month > 12) {
-      return 'Month must be between 01 and 12';
+      return 'Invalid month (01–12)';
     }
-
+    final expiryDate = DateTime(year, month + 1, 0);
     final now = DateTime.now();
-    final lastDayOfMonth = DateTime(yearFull, month + 1, 0);
-    if (lastDayOfMonth.isBefore(now)) {
-      return 'Card expired';
+    if (expiryDate.isBefore(DateTime(now.year, now.month, now.day))) {
+      return 'Card has expired';
     }
-
     return null;
   }
 
   String? _validateCardNumber(String? value) {
-    if (value == null) return 'Enter card number';
-    final digitsOnly = value.replaceAll(RegExp(r'\s+'), '');
-    if (digitsOnly.length != 16) return 'Card number must be 16 digits';
-    if (!RegExp(r'^[0-9]{16}$').hasMatch(digitsOnly)) {
-      return 'Only digits allowed';
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter your card number';
+    }
+    final digitsOnly = value.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digitsOnly.length != 15 && digitsOnly.length != 16) {
+      return 'Card number must be 15 or 16 digits';
     }
     return null;
   }
@@ -89,6 +85,20 @@ class _AddCardScreenState extends State<AddCardScreen> {
   String? _validateHolderName(String? value) {
     if (value == null || value.trim().isEmpty) return 'Enter cardholder name';
     return null;
+  }
+
+  void _onCardNumberChanged(String value) {
+    final digitsOnly = value.replaceAll(RegExp(r'\s+'), '');
+    if (digitsOnly.length >= 6) {
+      final detectedType = detectCCType(digitsOnly);
+      setState(() {
+        _detectedCardType = detectedType;
+      });
+    } else {
+      setState(() {
+        _detectedCardType = null;
+      });
+    }
   }
 
   Future<void> _saveCard() async {
@@ -198,8 +208,22 @@ class _AddCardScreenState extends State<AddCardScreen> {
                 ),
                 style: const TextStyle(color: Colors.white),
                 validator: _validateCardNumber,
+                onChanged: _onCardNumberChanged,
               ),
               const SizedBox(height: 12),
+              if (_detectedCardType != null) ...[
+                Row(
+                  children: [
+                    cardTypeIcon(_detectedCardType!),
+                    const SizedBox(width: 8),
+                    Text(
+                      cardTypeToFriendlyName(_detectedCardType!),
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
               TextFormField(
                 controller: _expiryController,
                 keyboardType: TextInputType.number,

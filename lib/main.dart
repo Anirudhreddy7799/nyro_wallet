@@ -10,6 +10,7 @@ import 'screens/cards_screen.dart';
 import 'screens/signup_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/profile_screen.dart';
+import 'screens/edit_card_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,6 +69,7 @@ class NyroWalletApp extends StatelessWidget {
         ProfileScreen.routeName: (_) => const ProfileScreen(),
         CardsScreen.routeName: (_) => const CardsScreen(),
         AddCardScreen.routeName: (_) => const AddCardScreen(),
+        '/edit_card': (_) => EditCardScreen(),
       },
     );
   }
