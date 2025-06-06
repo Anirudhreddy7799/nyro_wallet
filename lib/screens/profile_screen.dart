@@ -26,7 +26,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   /// Utility: safely read a String field from a DocumentSnapshot.
   String _getStringField(
-      DocumentSnapshot doc, String key, String defaultValue) {
+    DocumentSnapshot doc,
+    String key,
+    String defaultValue,
+  ) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
     if (data.containsKey(key) && data[key] is String) {
       return data[key] as String;
@@ -51,13 +54,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
       // If somehow no user is signed-in, redirect to login.
-      Future.microtask(() => Navigator.of(context).pushReplacementNamed('/login'));
+      Future.microtask(
+        () => Navigator.of(context).pushReplacementNamed('/login'),
+      );
       return const Scaffold(
         backgroundColor: Color(0xFF0D0D0D),
         body: Center(
-          child: CircularProgressIndicator(
-            color: Color(0xFFF6C141),
-          ),
+          child: CircularProgressIndicator(color: Color(0xFFF6C141)),
         ),
       );
     }
@@ -71,10 +74,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
         leading: GestureDetector(
           onTap: () => Navigator.of(context).pop(),
-          child: const Icon(
-            Icons.menu,
-            color: Color(0xFFF6C141),
-          ),
+          child: const Icon(Icons.menu, color: Color(0xFFF6C141)),
         ),
         centerTitle: true,
         title: const Text(
@@ -88,17 +88,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 offset: Offset(0, 2),
                 blurRadius: 4,
                 color: Colors.black54,
-              )
+              ),
             ],
           ),
         ),
         actions: const [
           Padding(
             padding: EdgeInsets.only(right: 16),
-            child: Icon(
-              Icons.notifications_none,
-              color: Color(0xFFF6C141),
-            ),
+            child: Icon(Icons.notifications_none, color: Color(0xFFF6C141)),
           ),
         ],
       ),
@@ -110,20 +107,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
           }
           if (!userSnapshot.hasData) {
             return const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFFF6C141),
-              ),
+              child: CircularProgressIndicator(color: Color(0xFFF6C141)),
             );
           }
 
           final userDoc = userSnapshot.data!;
-          final rawNameFromFirestore =
-              _getStringField(userDoc, 'name', '').trim();
+          final rawNameFromFirestore = _getStringField(
+            userDoc,
+            'name',
+            '',
+          ).trim();
           final displayName = rawNameFromFirestore.isNotEmpty
               ? rawNameFromFirestore
               : (currentUser.displayName?.trim().isNotEmpty == true
-                  ? currentUser.displayName!
-                  : (currentUser.email ?? 'Unknown User'));
+                    ? currentUser.displayName!
+                    : (currentUser.email ?? 'Unknown User'));
           final email = currentUser.email ?? '—';
 
           return ListView(
@@ -206,7 +204,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: Colors.black.withOpacity(0.4),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
-                      )
+                      ),
                     ],
                   ),
                 ),
@@ -237,13 +235,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   if (cardDocs.isEmpty) {
                     return const Padding(
                       padding: EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 12),
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
                       child: Text(
                         'No cards/accounts added yet.',
-                        style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 14,
-                        ),
+                        style: TextStyle(color: Colors.white54, fontSize: 14),
                       ),
                     );
                   }
@@ -319,10 +316,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           trailing: GestureDetector(
                             onTap: () {
-                              Navigator.of(context).pushNamed(
-                                '/edit_card',
-                                arguments: doc.id,
-                              );
+                              Navigator.of(
+                                context,
+                              ).pushNamed('/edit_card', arguments: doc.id);
                             },
                             child: const Icon(
                               Icons.chevron_right,
@@ -339,18 +335,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               // “Add Card/Account” button
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
                 child: GestureDetector(
                   onTap: () {
                     Navigator.of(context).pushNamed('/add_card');
                   },
                   child: Row(
                     children: const [
-                      Icon(
-                        Icons.add_circle_outline,
-                        color: Color(0xFFF6C141),
-                      ),
+                      Icon(Icons.add_circle_outline, color: Color(0xFFF6C141)),
                       SizedBox(width: 8),
                       Text(
                         'Add Card/Account',
@@ -382,7 +377,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: Colors.black.withOpacity(0.4),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
-                      )
+                      ),
                     ],
                   ),
                 ),
@@ -403,16 +398,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Expanded(
                         child: Text(
                           'Change Password',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                          ),
+                          style: TextStyle(color: Colors.white, fontSize: 16),
                         ),
                       ),
-                      Icon(
-                        Icons.chevron_right,
-                        color: Color(0xFFF6C141),
-                      )
+                      Icon(Icons.chevron_right, color: Color(0xFFF6C141)),
                     ],
                   ),
                 ),
@@ -432,10 +421,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         SizedBox(width: 12),
                         Text(
                           'Biometric Login',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                          ),
+                          style: TextStyle(color: Colors.white, fontSize: 16),
                         ),
                       ],
                     ),
@@ -466,7 +452,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: Colors.black.withOpacity(0.4),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
-                      )
+                      ),
                     ],
                   ),
                 ),
@@ -481,10 +467,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     const Text(
                       'Push Notifications',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
+                      style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
                     Switch(
                       value: true, // If you store this, bind it here
@@ -536,10 +519,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildErrorState(String message) {
     return Center(
-      child: Text(
-        message,
-        style: const TextStyle(color: Colors.redAccent),
-      ),
+      child: Text(message, style: const TextStyle(color: Colors.redAccent)),
     );
   }
 }
