@@ -1,5 +1,4 @@
 import 'package:credit_card_type_detector/credit_card_type_detector.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart';
 
 /// Returns a user-friendly string (e.g., "Visa", "Mastercard") based on CreditCardType.

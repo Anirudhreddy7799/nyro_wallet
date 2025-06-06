@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'profile_screen.dart';
-import 'cards_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,6 +18,20 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedIndex = index;
     });
   }
+
+  final List<Widget> _pages = [
+    // Add your page widgets here, corresponding to each tab
+    Center(
+      child: Text('Home Page', style: TextStyle(color: Colors.white)),
+    ),
+    Center(
+      child: Text('Cards Page', style: TextStyle(color: Colors.white)),
+    ),
+    Center(
+      child: Text('Offers Page', style: TextStyle(color: Colors.white)),
+    ),
+    ProfileScreen(), // Directly use the ProfileScreen widget
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -41,21 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: Center(
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.amber,
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
-          ),
-          onPressed: () {
-            Navigator.pushNamed(context, ProfileScreen.routeName);
-          },
-          child: const Text(
-            'Profile',
-            style: TextStyle(color: Colors.black, fontSize: 18),
-          ),
-        ),
-      ),
+      body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: const Color(0xFF0A0A0A),
         selectedItemColor: const Color(0xFFE5C100),
@@ -74,13 +73,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.amber,
-        child: const Icon(Icons.credit_card, color: Colors.black),
-        onPressed: () {
-          Navigator.pushNamed(context, CardsScreen.routeName);
-        },
       ),
     );
   }

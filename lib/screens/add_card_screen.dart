@@ -7,7 +7,7 @@ import '../utils/card_utils.dart';
 
 class AddCardScreen extends StatefulWidget {
   static const routeName = '/add-card';
-  const AddCardScreen({Key? key}) : super(key: key);
+  const AddCardScreen({super.key});
 
   @override
   State<AddCardScreen> createState() => _AddCardScreenState();

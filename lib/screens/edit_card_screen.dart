@@ -8,6 +8,8 @@ import '../utils/card_utils.dart';
 class EditCardScreen extends StatefulWidget {
   static const routeName = '/edit_card';
 
+  const EditCardScreen({super.key});
+
   @override
   _EditCardScreenState createState() => _EditCardScreenState();
 }
