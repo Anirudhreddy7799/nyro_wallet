@@ -1,24 +1,68 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-
-import 'signup_screen.dart';
-import 'home_screen.dart';
-import 'profile_screen.dart';
+import 'package:flutter/gestures.dart';
 
 class LoginScreen extends StatefulWidget {
   static const routeName = '/login';
-  const LoginScreen({super.key});
+  const LoginScreen({Key? key}) : super(key: key);
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  _LoginScreenState createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  // Controllers for the two text fields
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false;
-  String? _errorMessage;
+
+  // FormKey to run validation
+  final _formKey = GlobalKey<FormState>();
+
+  // Whether we’re currently trying to sign in (for showing a loading spinner)
+  bool _isProcessing = false;
+
+  // FirebaseAuth instance
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  // Attempts to sign in with Firebase. If successful, navigates to the “home” route.
+  Future<void> _attemptLogin() async {
+    if (!_formKey.currentState!.validate())
+      return; // don’t proceed if form is invalid
+
+    setState(() => _isProcessing = true);
+    try {
+      await _auth.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      // If sign-in succeeds, pop this screen or push replacement:
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/home');
+      }
+    } on FirebaseAuthException catch (e) {
+      String message = 'Login failed. Please try again.';
+      if (e.code == 'user-not-found') {
+        message = 'No user found with that email.';
+      } else if (e.code == 'wrong-password') {
+        message = 'Incorrect password.';
+      } else if (e.code == 'invalid-email') {
+        message = 'The email address is invalid.';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
+      );
+    } catch (_) {
+      // Generic fallback
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('An unexpected error occurred.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -27,161 +71,206 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _login() async {
-    // 1️⃣ Immediately clear any old error and mark as loading
-    setState(() {
-      _errorMessage = null;
-      _isLoading = true;
-    });
+  @override
+  Widget build(BuildContext context) {
+    // “Matte black” background
+    return Scaffold(
+      backgroundColor: const Color(0xFF0D0D0D),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 32),
 
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
+                // Back arrow + “Log In” title
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: const Icon(
+                        Icons.arrow_back,
+                        color: Color(0xFFF6C141),
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Log In',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFFF6C141),
+                        shadows: [
+                          Shadow(
+                            offset: const Offset(0, 2),
+                            blurRadius: 4,
+                            color: Colors.black.withOpacity(0.7),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
 
-    // 2️⃣ Quick “empty‐field” check
-    if (email.isEmpty || password.isEmpty) {
-      setState(() {
-        _errorMessage = 'Email & password are required.';
-        _isLoading = false;
-      });
-      return;
-    }
+                const SizedBox(height: 60),
 
-    try {
-      // 3️⃣ Attempt to sign in
-      UserCredential cred = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(email: email, password: password);
-      final uid = cred.user!.uid;
+                // Email field
+                _GoldInputField(
+                  controller: _emailController,
+                  hintText: 'Email',
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter your email';
+                    }
+                    final emailRegex = RegExp(
+                      r'^[^@]+@[^@]+\.[^@]+$',
+                    ); // simple email validation
+                    if (!emailRegex.hasMatch(value.trim())) {
+                      return 'Enter a valid email';
+                    }
+                    return null;
+                  },
+                ),
 
-      // 4️⃣ Update the lastLogin timestamp in Firestore
-      await FirebaseFirestore.instance.collection('users').doc(uid).update({
-        'lastLogin': FieldValue.serverTimestamp(),
-      });
+                const SizedBox(height: 24),
 
-      // 5️⃣ Clear “loading” and show success
-      setState(() {
-        _isLoading = false;
-      });
+                // Password field
+                _GoldInputField(
+                  controller: _passwordController,
+                  hintText: 'Password',
+                  obscureText: true,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your password';
+                    }
+                    if (value.length < 6) {
+                      return 'Password must be at least 6 characters';
+                    }
+                    return null;
+                  },
+                ),
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Login successful!'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 1),
+                const SizedBox(height: 48),
+
+                // “Log In” button (or spinner)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isProcessing ? null : _attemptLogin,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFF6C141),
+                      elevation: 8,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(36),
+                      ),
+                      shadowColor: Colors.amberAccent.withOpacity(0.5),
+                    ),
+                    child: _isProcessing
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3,
+                              color: Colors.black,
+                            ),
+                          )
+                        : const Text(
+                            'Log In',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black,
+                              letterSpacing: 1.1,
+                            ),
+                          ),
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
+                // “Don’t have an account? Sign up”
+                Center(
+                  child: Text.rich(
+                    TextSpan(
+                      text: "Don’t have an account? ",
+                      style: const TextStyle(color: Colors.white54),
+                      children: [
+                        TextSpan(
+                          text: "Sign up",
+                          style: const TextStyle(
+                            color: Color(0xFFF6C141),
+                            fontWeight: FontWeight.bold,
+                          ),
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () {
+                              Navigator.of(context).pushNamed('/signup');
+                            },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
         ),
-      );
-
-      // 6️⃣ Small delay so user can see the SnackBar
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // 7️⃣ Navigate inside (e.g. Home or Profile)
-      Navigator.pushReplacementNamed(context, HomeScreen.routeName);
-    } on FirebaseAuthException catch (e) {
-      // 8️⃣ If login fails, map the code to a user‐friendly message
-      String message;
-      switch (e.code) {
-        case 'user-not-found':
-          message = 'No account found for that email.';
-          break;
-        case 'wrong-password':
-          message = 'Incorrect password.';
-          break;
-        case 'invalid-email':
-          message = 'Invalid email address.';
-          break;
-        default:
-          message = e.message ?? 'Login failed. Please try again.';
-      }
-
-      // 9️⃣ Put that error into state and stop loading
-      setState(() {
-        _errorMessage = message;
-        _isLoading = false;
-      });
-    } catch (e) {
-      //  🔟 Any unexpected error
-      setState(() {
-        _errorMessage = 'Unexpected error: $e';
-        _isLoading = false;
-      });
-    }
+      ),
+    );
   }
+}
+
+/// Custom “matte‐black + gold” TextField wrapper
+class _GoldInputField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hintText;
+  final bool obscureText;
+  final TextInputType keyboardType;
+  final String? Function(String?)? validator;
+
+  const _GoldInputField({
+    required this.controller,
+    required this.hintText,
+    this.obscureText = false,
+    this.keyboardType = TextInputType.text,
+    this.validator,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.amber,
-        title: const Text('Log In', style: TextStyle(color: Colors.black)),
-        iconTheme: const IconThemeData(color: Colors.black),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  filled: true,
-                  fillColor: Colors.white24,
-                  border: OutlineInputBorder(),
-                ),
-                style: const TextStyle(color: Colors.white),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                  filled: true,
-                  fillColor: Colors.white24,
-                  border: OutlineInputBorder(),
-                ),
-                style: const TextStyle(color: Colors.white),
-              ),
-              const SizedBox(height: 24),
-              if (_errorMessage != null) ...[
-                Text(
-                  _errorMessage!,
-                  style: const TextStyle(color: Colors.red),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 12),
-              ],
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.amber,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                onPressed: _isLoading ? null : _login,
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.black)
-                    : const Text(
-                        'Log In',
-                        style: TextStyle(fontSize: 16, color: Colors.black),
-                      ),
-              ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () {
-                  Navigator.pushReplacementNamed(
-                    context,
-                    SignupScreen.routeName,
-                  );
-                },
-                child: const Text(
-                  'Don’t have an account? Sign up',
-                  style: TextStyle(color: Colors.amber),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ),
+    return TextFormField(
+      controller: controller,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      style: const TextStyle(color: Colors.white),
+      validator: validator,
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: const TextStyle(color: Colors.white60),
+        filled: true,
+        fillColor: const Color(0xFF1C1C1C),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 18,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: Color(0xFFF6C141), width: 1.5),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: Color(0xFFF6C141)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: Color(0xFFFFD700), width: 2),
         ),
       ),
     );

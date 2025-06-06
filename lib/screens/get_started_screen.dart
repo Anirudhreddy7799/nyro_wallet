@@ -8,100 +8,98 @@ class GetStartedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Colors used in this design
+    const Color matteBlack = Color(0xFF0D0D0D);
+    const Color darkPanel = Color(0xFF1A1A1A);
+    const Color royalGold = Color(0xFFF6C141);
+
     return Scaffold(
-      body: Stack(
-        children: [
-          // Background gradient
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF0A0A0A), Color(0xFF1A1A1A)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-          ),
-          // Abstract shape
-          Positioned(
-            top: -100,
-            left: -50,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    Color(0xFFE5C100).withOpacity(0.2),
-                    Colors.transparent,
+      backgroundColor: matteBlack,
+      body: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // ——— Logo Container ———
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  color: darkPanel,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.6),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                    ),
                   ],
                 ),
+                child: Center(
+                  child: Image.asset(
+                    'assets/images/nyro_gold_logo.png',
+                    width: 72,
+                    height: 72,
+                    fit: BoxFit.contain,
+                  ),
+                ),
               ),
-            ),
-          ),
-          // Content
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Spacer(),
-                  const Icon(
-                    Icons.account_balance_wallet_rounded,
-                    size: 100,
-                    color: Color(0xFFE5C100),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'NyroWallet',
-                    style: TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFE5C100),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Smarter Payments. Better Rewards.',
-                    style: TextStyle(fontSize: 18, color: Colors.white70),
-                    textAlign: TextAlign.center,
-                  ),
-                  const Spacer(),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const LoginScreen(),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFE5C100),
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Get Started',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+
+              const SizedBox(height: 32),
+
+              // ——— App Title ———
+              const Text(
+                "NyroWallet",
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: royalGold,
+                ),
               ),
-            ),
+
+              const SizedBox(height: 12),
+
+              // ——— Subtitle/Tagline ———
+              const Text(
+                "Modern Card Management\nMade Easy",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: royalGold, height: 1.5),
+              ),
+
+              const SizedBox(height: 48),
+
+              // ——— Get Started Button ———
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: royalGold,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 40,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(32),
+                  ),
+                  elevation: 10,
+                  shadowColor: Colors.black.withOpacity(0.5),
+                ),
+                child: const Text(
+                  "Get Started",
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

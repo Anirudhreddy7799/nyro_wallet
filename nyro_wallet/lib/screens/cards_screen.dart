@@ -28,7 +28,7 @@ class CardsScreen extends StatelessWidget {
 }
 
 class _CardsList extends StatelessWidget {
-  const _CardsList({super.key});
+  const _CardsList();
 
   @override
   Widget build(BuildContext context) {

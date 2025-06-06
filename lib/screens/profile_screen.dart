@@ -1,309 +1,545 @@
-import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'login_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 
 class ProfileScreen extends StatefulWidget {
-  static const routeName = '/profile';
-  const ProfileScreen({super.key});
+  const ProfileScreen({Key? key}) : super(key: key);
+
+  static const String routeName = '/profile';
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  User? _currentUser;
-  DocumentSnapshot<Map<String, dynamic>>? _userDoc;
-  bool _isLoading = true;
-  String? _errorMessage;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   bool _biometricEnabled = false;
-  bool _notificationsEnabled = true;
-  bool _darkMode = false;
-  String _language = 'English';
 
   @override
   void initState() {
     super.initState();
-    _currentUser = FirebaseAuth.instance.currentUser;
-    _fetchUserProfile();
+    // If you store biometric setting in Firestore, fetch it here.
+    // Otherwise leave _biometricEnabled=false by default.
   }
 
-  Future<void> _fetchUserProfile() async {
-    if (_currentUser == null) {
-      setState(() {
-        _errorMessage = 'No user signed in.';
-        _isLoading = false;
-      });
-      return;
+  /// Utility: safely read a String field from a DocumentSnapshot.
+  String _getStringField(
+      DocumentSnapshot doc, String key, String defaultValue) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    if (data.containsKey(key) && data[key] is String) {
+      return data[key] as String;
     }
-
-    final uid = _currentUser!.uid;
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get();
-      if (!doc.exists) {
-        setState(() {
-          _errorMessage = 'User record not found in database.';
-          _isLoading = false;
-        });
-        return;
-      }
-      setState(() {
-        _userDoc = doc;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to load profile: $e';
-        _isLoading = false;
-      });
-    }
+    return defaultValue;
   }
 
-  Future<void> _logout() async {
-    await FirebaseAuth.instance.signOut();
-    Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+  Future<void> _signOut() async {
+    await _auth.signOut();
+    Navigator.of(context).pushReplacementNamed('/login');
   }
 
-  Stream<List<CardModel>> _cardsStream() {
-    return FirebaseFirestore.instance
-        .collection('users')
-        .doc(_currentUser!.uid)
-        .collection('cards')
-        .snapshots()
-        .map((snapshot) {
-          return snapshot.docs.map((doc) => CardModel.fromDoc(doc)).toList();
-        });
+  void _toggleBiometric(bool newVal) {
+    setState(() {
+      _biometricEnabled = newVal;
+      // TODO: Persist this in Firestore or Secure Storage if you need.
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      // If somehow no user is signed-in, redirect to login.
+      Future.microtask(() => Navigator.of(context).pushReplacementNamed('/login'));
+      return const Scaffold(
+        backgroundColor: Color(0xFF0D0D0D),
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFFF6C141),
+          ),
+        ),
+      );
+    }
+
+    final uid = currentUser.uid;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF0D0D0D),
       appBar: AppBar(
+        backgroundColor: const Color(0xFF0D0D0D),
+        elevation: 0,
+        leading: GestureDetector(
+          onTap: () => Navigator.of(context).pop(),
+          child: const Icon(
+            Icons.menu,
+            color: Color(0xFFF6C141),
+          ),
+        ),
+        centerTitle: true,
         title: const Text(
-          'Your Profile',
-          style: TextStyle(color: Colors.black),
+          'NyroWallet',
+          style: TextStyle(
+            color: Color(0xFFF6C141),
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            shadows: [
+              Shadow(
+                offset: Offset(0, 2),
+                blurRadius: 4,
+                color: Colors.black54,
+              )
+            ],
+          ),
         ),
-        backgroundColor: Colors.amber,
-        iconTheme: const IconThemeData(color: Colors.black),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 16),
+            child: Icon(
+              Icons.notifications_none,
+              color: Color(0xFFF6C141),
+            ),
+          ),
+        ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-          ? Center(
-              child: Text(
-                _errorMessage!,
-                style: const TextStyle(color: Colors.red, fontSize: 16),
-                textAlign: TextAlign.center,
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: _firestore.collection('users').doc(uid).snapshots(),
+        builder: (context, userSnapshot) {
+          if (userSnapshot.hasError) {
+            return _buildErrorState('Error loading profile.');
+          }
+          if (!userSnapshot.hasData) {
+            return const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFFF6C141),
               ),
-            )
-          : _buildProfileContent(),
-    );
-  }
+            );
+          }
 
-  Widget _buildProfileContent() {
-    final data = _userDoc!.data()!;
-    final displayName = data['displayName'] as String? ?? 'No name';
-    final email = data['email'] as String? ?? 'No email';
+          final userDoc = userSnapshot.data!;
+          final rawNameFromFirestore =
+              _getStringField(userDoc, 'name', '').trim();
+          final displayName = rawNameFromFirestore.isNotEmpty
+              ? rawNameFromFirestore
+              : (currentUser.displayName?.trim().isNotEmpty == true
+                  ? currentUser.displayName!
+                  : (currentUser.email ?? 'Unknown User'));
+          final email = currentUser.email ?? '—';
 
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        Row(
-          children: [
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: Colors.amber,
-              child: Text(
-                displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
-                style: const TextStyle(color: Colors.black, fontSize: 24),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  displayName,
-                  style: const TextStyle(color: Colors.amber, fontSize: 20),
-                ),
-                Text(
-                  email,
-                  style: const TextStyle(color: Colors.grey, fontSize: 16),
-                ),
-              ],
-            ),
-          ],
-        ),
-        const Divider(color: Colors.grey),
-        const SizedBox(height: 12),
-        Text(
-          'Wallet & Accounts',
-          style: const TextStyle(color: Colors.amber, fontSize: 18),
-        ),
-        StreamBuilder<List<CardModel>>(
-          stream: _cardsStream(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final cards = snapshot.data ?? [];
-            return Column(
-              children: cards
-                  .map(
-                    (card) => ListTile(
-                      title: Text(
-                        '•••• ${card.last4}',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      subtitle: Text(
-                        card.type,
-                        style: const TextStyle(color: Colors.grey),
+          return ListView(
+            children: [
+              const SizedBox(height: 24),
+
+              // ===== User Header =====
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF6C141),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.5),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                     ),
-                  )
-                  .toList(),
-            );
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.add_circle_outline, color: Colors.amber),
-          title: const Text(
-            'Add Card/Account',
-            style: TextStyle(color: Colors.amber),
-          ),
-          onTap: () {
-            // TODO: Navigate to Add Card/Account screen
-          },
-        ),
-        const Divider(color: Colors.grey),
-        Text(
-          'Preferences',
-          style: const TextStyle(color: Colors.amber, fontSize: 18),
-        ),
-        SwitchListTile(
-          value: _darkMode,
-          onChanged: (value) {
-            setState(() => _darkMode = value);
-          },
-          title: const Text('Dark Mode', style: TextStyle(color: Colors.amber)),
-        ),
-        ListTile(
-          leading: const Icon(Icons.language, color: Colors.amber),
-          title: const Text('Language', style: TextStyle(color: Colors.amber)),
-          subtitle: Text(_language, style: const TextStyle(color: Colors.grey)),
-          onTap: () {
-            // TODO: Show language selection dialog
-          },
-        ),
-        const Divider(color: Colors.grey),
-        Text(
-          'Security',
-          style: const TextStyle(color: Colors.amber, fontSize: 18),
-        ),
-        SwitchListTile(
-          value: _biometricEnabled,
-          onChanged: (value) {
-            setState(() => _biometricEnabled = value);
-          },
-          title: const Text(
-            'Biometric Login',
-            style: TextStyle(color: Colors.amber),
-          ),
-        ),
-        SwitchListTile(
-          value: _notificationsEnabled,
-          onChanged: (value) {
-            setState(() => _notificationsEnabled = value);
-          },
-          title: const Text(
-            'App Notifications',
-            style: TextStyle(color: Colors.amber),
-          ),
-        ),
-        const Divider(color: Colors.grey),
-        Text(
-          'Support & About',
-          style: const TextStyle(color: Colors.amber, fontSize: 18),
-        ),
-        ListTile(
-          leading: const Icon(Icons.policy, color: Colors.amber),
-          title: const Text(
-            'Privacy Policy',
-            style: TextStyle(color: Colors.amber),
-          ),
-          onTap: () {
-            // TODO: Open Privacy Policy
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.description, color: Colors.amber),
-          title: const Text(
-            'Terms of Service',
-            style: TextStyle(color: Colors.amber),
-          ),
-          onTap: () {
-            // TODO: Open Terms of Service
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.info_outline, color: Colors.amber),
-          title: const Text(
-            'About Nyro Wallet',
-            style: TextStyle(color: Colors.amber),
-          ),
-          subtitle: const Text(
-            'Version 1.0.0',
-            style: TextStyle(color: Colors.grey),
-          ),
-          onTap: () {
-            // TODO: Show About dialog
-          },
-        ),
-        const Divider(color: Colors.grey),
-        ListTile(
-          title: const Text(
-            'Help & Support',
-            style: TextStyle(color: Colors.amber),
-          ),
-          onTap: () {},
-        ),
-        ElevatedButton(
-          onPressed: _logout,
-          child: const Text('Log Out', style: TextStyle(color: Colors.black)),
-        ),
-      ],
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            displayName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            email,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        // TODO: If you want an “Edit Profile” flow, push that here
+                      },
+                      child: const Icon(
+                        Icons.edit,
+                        color: Color(0xFFF6C141),
+                        size: 24,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+              const Divider(color: Colors.white24, thickness: 1),
+              const SizedBox(height: 16),
+
+              // ===== Wallet & Accounts Section =====
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  'Wallet & Accounts',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withOpacity(0.4),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      )
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // List the user’s cards from Firestore subcollection
+              StreamBuilder<QuerySnapshot>(
+                stream: _firestore
+                    .collection('users')
+                    .doc(uid)
+                    .collection('cards')
+                    .orderBy('nickname')
+                    .snapshots(),
+                builder: (context, cardsSnapshot) {
+                  if (cardsSnapshot.hasError) {
+                    return _buildErrorState('Error loading cards.');
+                  }
+                  if (!cardsSnapshot.hasData) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFFF6C141),
+                      ),
+                    );
+                  }
+
+                  final cardDocs = cardsSnapshot.data!.docs;
+                  if (cardDocs.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
+                      child: Text(
+                        'No cards/accounts added yet.',
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 14,
+                        ),
+                      ),
+                    );
+                  }
+
+                  return ListView.separated(
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    separatorBuilder: (ctx, i) => const SizedBox(height: 12),
+                    itemCount: cardDocs.length,
+                    itemBuilder: (context, index) {
+                      final doc = cardDocs[index];
+                      final data = doc.data()! as Map<String, dynamic>;
+
+                      // Safely read card fields (fallback to empty string)
+                      final fullNumber = (data['number'] as String?) ?? '';
+                      final last4 = fullNumber.length >= 4
+                          ? fullNumber.substring(fullNumber.length - 4)
+                          : fullNumber;
+                      final expiry = (data['expiry'] as String?) ?? '';
+                      final type = (data['type'] as String?) ?? '';
+                      final nickname = (data['nickname'] as String?) ?? '';
+
+                      // Pick an icon placeholder based on type
+                      IconData cardIcon;
+                      switch (type.toLowerCase()) {
+                        case 'visa':
+                          cardIcon = Icons.credit_card;
+                          break;
+                        case 'mastercard':
+                          cardIcon = Icons.payment;
+                          break;
+                        case 'amex':
+                          cardIcon = Icons.credit_score;
+                          break;
+                        default:
+                          cardIcon = Icons.credit_card;
+                      }
+
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1C1C1C),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.5),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ListTile(
+                          leading: Icon(
+                            cardIcon,
+                            size: 28,
+                            color: const Color(0xFFF6C141),
+                          ),
+                          title: Text(
+                            '•••• •••• •••• $last4',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          subtitle: Text(
+                            nickname.isNotEmpty
+                                ? '$nickname • Exp: $expiry'
+                                : 'Exp: $expiry',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                          trailing: GestureDetector(
+                            onTap: () {
+                              Navigator.of(context).pushNamed(
+                                '/edit_card',
+                                arguments: doc.id,
+                              );
+                            },
+                            child: const Icon(
+                              Icons.chevron_right,
+                              color: Color(0xFFF6C141),
+                              size: 28,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+
+              // “Add Card/Account” button
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).pushNamed('/add_card');
+                  },
+                  child: Row(
+                    children: const [
+                      Icon(
+                        Icons.add_circle_outline,
+                        color: Color(0xFFF6C141),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Add Card/Account',
+                        style: TextStyle(
+                          color: Color(0xFFF6C141),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const Divider(color: Colors.white24, thickness: 1),
+              const SizedBox(height: 16),
+
+              // ===== Security Section =====
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  'Security',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withOpacity(0.4),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      )
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Change Password
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).pushNamed('/change_password');
+                  },
+                  child: Row(
+                    children: const [
+                      Icon(Icons.lock_outline, color: Color(0xFFF6C141)),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Change Password',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right,
+                        color: Color(0xFFF6C141),
+                      )
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Biometric Login Toggle
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: const [
+                        Icon(Icons.fingerprint, color: Color(0xFFF6C141)),
+                        SizedBox(width: 12),
+                        Text(
+                          'Biometric Login',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Switch(
+                      value: _biometricEnabled,
+                      activeColor: const Color(0xFFF6C141),
+                      onChanged: (val) => _toggleBiometric(val),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+              const Divider(color: Colors.white24, thickness: 1),
+              const SizedBox(height: 16),
+
+              // ===== Notifications Section (optional) =====
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  'Notifications',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withOpacity(0.4),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      )
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Toggle Push Notifications (UI only)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Push Notifications',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Switch(
+                      value: true, // If you store this, bind it here
+                      activeColor: const Color(0xFFF6C141),
+                      onChanged: (val) {
+                        // TODO: Handle push notification toggle
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // ===== Log Out Button =====
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: ElevatedButton(
+                  onPressed: _signOut,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent.shade700,
+                    elevation: 6,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'Log Out',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 32),
+            ],
+          );
+        },
+      ),
     );
   }
-}
 
-class CardModel {
-  final String id;
-  final String last4;
-  final String type;
-  final String expiry;
-  final String nickname;
-
-  CardModel({
-    required this.id,
-    required this.last4,
-    required this.type,
-    required this.expiry,
-    required this.nickname,
-  });
-
-  factory CardModel.fromDoc(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return CardModel(
-      id: doc.id,
-      last4: data['last4'] ?? '0000',
-      type: data['type'] ?? 'Unknown',
-      expiry: data['expiry'] ?? '',
-      nickname: data['nickname'] ?? '',
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Text(
+        message,
+        style: const TextStyle(color: Colors.redAccent),
+      ),
     );
   }
 }
